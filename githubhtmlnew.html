@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gas Leak Detection Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #e0f7e9;
+      transition: background-color 0.5s ease;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-top: 40px;
+    }
+    #ppm-value {
+      font-size: 7rem;
+      font-weight: bold;
+      margin: 40px 0;
+      color: #333;
+    }
+    #timestamp {
+      font-size: 1.5rem;
+      color: #444;
+    }
+    #status {
+      font-size: 2rem;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gas Leak Monitor</h1>
+  <div id="ppm-value">--</div>
+  <div id="timestamp">Waiting for data...</div>
+  <div id="status">Status: Normal</div>
+
+  <!-- MQTT over WebSockets -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    const ppmDisplay = document.getElementById('ppm-value');
+    const timestampDisplay = document.getElementById('timestamp');
+    const statusDisplay = document.getElementById('status');
+
+    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+    client.on("connect", () => {
+      console.log("Connected to MQTT broker");
+      client.subscribe("gasleak/data");
+    });
+
+    client.on("message", (topic, message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        const ppm = data.ppm;
+        const time = data.time;
+
+        ppmDisplay.textContent = ppm + " PPM";
+        timestampDisplay.textContent = "Time: " + time;
+
+        if (ppm >= 200) {
+          document.body.style.backgroundColor = "#ffebee"; // light red
+          statusDisplay.textContent = "⚠️ ALERT: High Gas Detected!";
+          statusDisplay.style.color = "red";
+        } else {
+          document.body.style.backgroundColor = "#e0f7e9"; // light green
+          statusDisplay.textContent = "Status: Normal";
+          statusDisplay.style.color = "green";
+        }
+      } catch (e) {
+        console.error("Error parsing MQTT message", e);
+      }
+    });
+  </script>
+</body>
+</html>
